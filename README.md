@@ -12,5 +12,5 @@ Usage
 
 <pre><code>
 [global]
-index-url = http://pypi.ostrovok.ru/simple
+index-url = http://pypi.example.org/simple
 </code></pre>
