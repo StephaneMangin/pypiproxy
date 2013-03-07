@@ -1,12 +1,10 @@
 # coding: utf-8
+from flask import Flask, make_response, request
 import os
 import re
 import urllib2
 import urllib
 import json
-
-from flask import Flask, make_response, request
-
 
 app = Flask(__name__)
 
@@ -41,10 +39,14 @@ def simple_pkg_ver_redir(pkg, ver):
 
 @app.route("/world/<proto>/<path:url>")
 def world(proto, url):
-    return _fetch(request.method, proto, url)
+    def post_processing(content):
+        host = url.split('/', 1)[0]
+        return re.sub(r'(href=)(["\'])/([^/"][^"]+)\2', r'\1\2/world/{}/{}/\3\2'.format(proto, host), content)
+
+    return _fetch(request.method, proto, url, post_processing)
 
 
-def _fetch(method, proto, url):
+def _fetch(method, proto, url, post_processing=None):
     is_pkg = any(True for ext in ('.tar.gz', '.tar.bz2', '.tar.xz',
                  '.tar', '.tgz', '.zip') if url.endswith(ext))
     if is_pkg:
@@ -64,6 +66,9 @@ def _fetch(method, proto, url):
         req = urllib2.Request(proto + "://" + url)
         req.get_method = lambda: method
         op = urllib2.build_opener(urllib2.HTTPRedirectHandler)
+        r_code = None
+        r_headers = None
+        r_content = None
         try:
             r = op.open(req)
             r_code = r.getcode()
@@ -72,7 +77,6 @@ def _fetch(method, proto, url):
         except urllib2.HTTPError as e:
             r_code = e.code
             r_headers = {}
-            r_content = None
 
         if r_code in (200, 404):
             open(pm, 'w').write(
@@ -85,6 +89,8 @@ def _fetch(method, proto, url):
         content = open(p).read()
     else:
         content = ''
+    if post_processing:
+        content = post_processing(content)
     resp = make_response(content, meta['code'])
 
     for k, v in meta['headers'].items():
