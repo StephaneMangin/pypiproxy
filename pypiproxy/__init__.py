@@ -1,5 +1,5 @@
 # coding: utf-8
-from flask import Flask, make_response, request
+from flask import Flask, make_response, request, redirect
 import os
 import re
 import urllib2
@@ -12,7 +12,8 @@ app = Flask(__name__)
 @app.route("/simple/<pkg>/")
 def simple_pkg(pkg):
     t = urllib2.urlopen(
-        "https://pypi.python.org/simple/{}/".format(pkg)).read()
+        "https://pypi.python.org/simple/{}/".format(pkg),
+        timeout=3).read()
     t = re.sub(r'(https?)://([a-z_./A-Z0-9\-]+)', r'/world/\1/\2', t)
     return t
 
@@ -25,16 +26,12 @@ def simple_pkg_ver(pkg, ver):
 
 @app.route("/simple/<pkg>")
 def simple_pkg_redir(pkg):
-    r = make_response("", 301)
-    r.headers['location'] = "/simple/" + pkg + "/"
-    return r
+    return redirect("/simple/" + pkg + "/", code=301)
 
 
 @app.route("/simple/<pkg>/<ver>")
 def simple_pkg_ver_redir(pkg, ver):
-    r = make_response("", 301)
-    r.headers['location'] = "/simple/" + pkg + "/" + ver + "/"
-    return r
+    return redirect("/simple/" + pkg + "/" + ver + "/", code=301)
 
 
 @app.route("/world/<proto>/<path:url>")
@@ -70,7 +67,7 @@ def _fetch(method, proto, url, post_processing=None):
         r_headers = None
         r_content = None
         try:
-            r = op.open(req)
+            r = op.open(req, timeout=3)
             r_code = r.getcode()
             r_headers = r.headers.dict
             r_content = r.read()
