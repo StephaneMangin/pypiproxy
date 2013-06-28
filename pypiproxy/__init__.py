@@ -1,10 +1,11 @@
 # coding: utf-8
 from flask import Flask, make_response, request, redirect
+import json
 import os
 import re
-import urllib2
 import urllib
-import json
+import urllib2
+
 
 app = Flask(__name__)
 
@@ -36,9 +37,14 @@ def simple_pkg_ver_redir(pkg, ver):
 
 @app.route("/world/<proto>/<path:url>")
 def world(proto, url):
+    proto = proto.lstrip('_').rstrip(':')
+    if not proto:
+        proto = 'http'
     def post_processing(content):
         host = url.split('/', 1)[0]
-        return re.sub(r'(href=)(["\'])/([^/"][^"]+)\2', r'\1\2/world/{}/{}/\3\2'.format(proto, host), content)
+        content = re.sub(r'(href=)(["\'])/([^/"][^"]+)\2', r'\1\2/world/{}/{}/\3\2'.format(proto, host), content)
+        content = re.sub(r'(href=)(["\'])(http:|https:|)//([^/]+)/([^\'"]+)\2', r'\1\2/world/_\3/\4/\5\2', content)
+        return content
 
     return _fetch(request.method, proto, url, post_processing)
 
@@ -101,5 +107,6 @@ def packages_source(path):
     url = "pypi.python.org/packages/source/" + path
     return _fetch(request.method, "https", url)
 
+
 if __name__ == "__main__":
-    app.run(debug=True)
+    app.run(debug=True, host='0')
